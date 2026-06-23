@@ -19,8 +19,8 @@ connectDB();
 
 // Razorpay Instance Initialization
 const razorpay = new Razorpay({
-    key_id: process.env.RAZORPAY_KEY_ID || 'rzp_test_YourKeyHere',
-    key_secret: process.env.RAZORPAY_KEY_SECRET || 'YourSecretHere'
+    key_id: process.env.RAZORPAY_KEY_ID || 'rzp_test_T4d01Z0WWvOm9s',
+    key_secret: process.env.RAZORPAY_KEY_SECRET || 'O3xJ5Wr38jvK6Z4QifvwbN7F'
 });
 
 // ================= AUTHENTICATION APIS =================
@@ -54,6 +54,21 @@ app.post('/api/auth/login', async (req, res) => {
 
 app.get('/api/products', async (req, res) => {
     try { const products = await Product.find({}); res.json(products); } catch (err) { res.status(500).json({ error: "Server Error" }); }
+});
+
+// ================= 📝 LIVE CUSTOMER ENQUIRY ROUTE =================
+app.post('/api/contact', async (req, res) => {
+    try {
+        const { name, email, message } = req.body;
+        if (!name || !email || !message) {
+            return res.status(400).json({ success: false, error: "All fields are required" });
+        }
+        const newContact = new Contact({ name, email, message });
+        await newContact.save();
+        res.status(201).json({ success: true, message: "Enquiry logged successfully!" });
+    } catch (err) {
+        res.status(500).json({ success: false, error: "Database saving failed: " + err.message });
+    }
 });
 
 // ================= RAZORPAY ORDERS ENDPOINT =================
@@ -104,6 +119,18 @@ app.post('/api/orders/checkout', auth, async (req, res) => {
 app.post('/api/admin/products', auth, async (req, res) => {
     if (req.user.role !== 'admin') return res.status(403).json({ msg: 'Admins only' });
     try { const newProduct = new Product(req.body); await newProduct.save(); res.status(201).json({ success: true, product: newProduct }); } catch (err) { res.status(500).send('Server Error'); }
+});
+
+// 🌟 DYNAMIC PRODUCT EDIT ROUTE (PUT ENGINE ADDED)
+app.put('/api/admin/products/:id', auth, async (req, res) => {
+    if (req.user.role !== 'admin') return res.status(403).json({ success: false, msg: 'Access Denied: Admins only' });
+    try {
+        const updatedProduct = await Product.findByIdAndUpdate(req.params.id, req.body, { new: true });
+        if (!updatedProduct) return res.status(404).json({ success: false, msg: 'Product not found in system matrix' });
+        res.json({ success: true, product: updatedProduct });
+    } catch (err) { 
+        res.status(500).send('Server Error during product update: ' + err.message); 
+    }
 });
 
 app.get('/api/admin/contacts', auth, async (req, res) => {
